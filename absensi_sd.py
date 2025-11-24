@@ -7,13 +7,12 @@ from PIL import Image
 # --- 1. PENGATURAN DATA ---
 FILE_ABSENSI = 'data_absensi.csv'
 FILE_PIN = 'data_pin.csv'
-FOLDER_BUKTI = 'bukti_sakit' # Folder khusus simpan foto
+FOLDER_BUKTI = 'bukti_sakit'
 
-# Pastikan folder bukti ada
 if not os.path.exists(FOLDER_BUKTI):
     os.makedirs(FOLDER_BUKTI)
 
-# Data Default Kelas 4 SDIT
+# Data Default
 DEFAULT_PIN = {
     "4A": "1111", "4B": "1212",
     "4C": "2222", "4D": "2323",
@@ -23,7 +22,6 @@ DEFAULT_PIN = {
 # --- FUNGSI LOAD & SAVE ---
 def load_data_absensi():
     if not os.path.exists(FILE_ABSENSI):
-        # Tambah kolom 'Bukti File'
         df = pd.DataFrame(columns=['Tanggal', 'Nama Siswa', 'Kelas', 'Status', 'Keterangan', 'Bukti File'])
         df.to_csv(FILE_ABSENSI, index=False)
     return pd.read_csv(FILE_ABSENSI)
@@ -48,7 +46,7 @@ def update_pin(kelas, pin_baru):
 # --- 2. TAMPILAN APLIKASI ---
 st.set_page_config(page_title="Absensi KELAS 4 SDIT AL USWAH 2", layout="centered", initial_sidebar_state="expanded")
 
-# CSS Pembersih Tampilan (Aman)
+# CSS Pembersih
 hide_st_style = """
             <style>
             [data-testid="stToolbar"] {visibility: hidden !important; right: 2rem;}
@@ -57,19 +55,23 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# --- FITUR 1: TAMPILKAN LOGO SEKOLAH ---
-col_logo, col_judul = st.columns([1, 4])
-with col_logo:
-    # Cek apakah file logo.png sudah diupload ke GitHub/Folder
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=100)
-    else:
-        st.write("📷") # Placeholder jika logo belum ada
-with col_judul:
-    st.title("Absensi SDIT AL USWAH 2")
-    st.write("Kelas 4 - Sistem Terintegrasi")
+# --- HEADER: LOGO & JUDUL DI TENGAH ---
+# Kita buat 3 kolom: Kiri (kosong), Tengah (Logo), Kanan (kosong)
+col_kiri, col_tengah, col_kanan = st.columns([1, 1, 1])
 
+with col_tengah:
+    # Logo ditaruh di kolom tengah
+    if os.path.exists("logo.png"):
+        # use_container_width=True supaya gambar menyesuaikan lebar kolom tengah
+        st.image("logo.png", use_container_width=True) 
+    else:
+        st.write("") 
+
+# Judul dibuat Rata Tengah pakai HTML
+st.markdown("<h1 style='text-align: center;'>Absensi KELAS 4 SDIT AL USWAH 2</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Sistem Absensi Terintegrasi Wali Murid & Guru</p>", unsafe_allow_html=True)
 st.markdown("---")
+# --------------------------------------
 
 menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
 
@@ -91,7 +93,7 @@ if menu == "Wali Murid (Absen)":
     
     status = st.radio("Status Kehadiran", ["Hadir", "Sakit", "Ijin"])
     
-    # --- FITUR 2: UPLOAD FOTO JIKA SAKIT ---
+    # Upload Bukti
     file_bukti = None
     nama_file_bukti = ""
     
@@ -103,12 +105,9 @@ if menu == "Wali Murid (Absen)":
 
     if st.button("Kirim Absensi"):
         if nama:
-            # Proses Simpan Gambar
             if file_bukti is not None:
-                # Buat nama file unik: Tanggal_Nama_Kelas.png
                 nama_file_bukti = f"{tanggal_sekarang}_{nama}_{kelas}.png".replace(" ", "_")
                 path_simpan = os.path.join(FOLDER_BUKTI, nama_file_bukti)
-                
                 with open(path_simpan, "wb") as f:
                     f.write(file_bukti.getbuffer())
             
@@ -118,7 +117,7 @@ if menu == "Wali Murid (Absen)":
                 'Kelas': kelas,
                 'Status': status,
                 'Keterangan': keterangan,
-                'Bukti File': nama_file_bukti # Simpan nama filenya saja di CSV
+                'Bukti File': nama_file_bukti
             }
             simpan_data_absensi(data_baru)
             st.success(f"Terima kasih! Data absensi {nama} berhasil dikirim.")
@@ -162,27 +161,23 @@ elif menu == "Guru / Admin (Rekap Data)":
 
             st.write(f"Data Tanggal: **{filter_tanggal}**")
             
-            # Tampilkan Tabel (Sembunyikan kolom nama file bukti agar rapi)
+            # Tampilkan Tabel (Tanpa kolom nama file)
             st.dataframe(df_tampil.drop(columns=['Bukti File'], errors='ignore'), use_container_width=True)
             
-            # --- BAGIAN LIHAT BUKTI FOTO ---
             if not df_tampil.empty:
-                # Cek apakah ada yang sakit dan punya bukti
+                # Galeri Bukti
                 siswa_sakit = df_tampil[df_tampil['Status'] == "Sakit"]
-                
                 if not siswa_sakit.empty:
                     st.markdown("### 📸 Galeri Bukti Sakit")
-                    cols = st.columns(3) # Tampilkan 3 gambar per baris
+                    cols = st.columns(3)
                     for index, row in siswa_sakit.iterrows():
                         nama_file = row.get('Bukti File', '')
                         if nama_file:
                             path_file = os.path.join(FOLDER_BUKTI, nama_file)
                             if os.path.exists(path_file):
-                                st.image(path_file, caption=f"Bukti: {row['Nama Siswa']} ({row['Kelas']})", width=200)
-                            else:
-                                st.warning(f"Foto {row['Nama Siswa']} hilang/belum upload.")
+                                st.image(path_file, caption=f"{row['Nama Siswa']} ({row['Kelas']})", width=200)
                 
-                # Tombol Download
+                # Download
                 st.markdown("---")
                 csv_data = df_tampil.to_csv(index=False).encode('utf-8')
                 nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
