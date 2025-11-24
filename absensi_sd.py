@@ -1,40 +1,31 @@
 import streamlit as st
 import pandas as pd
+import os
 from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
 
 # --- 1. PENGATURAN DATA ---
-# Kita tidak pakai CSV lagi untuk absensi, tapi pakai koneksi GSheets
-# File PIN tetap pakai CSV lokal (atau bisa dipindah ke GSheets lain kalau mau, tapi CSV cukup untuk PIN)
+FILE_ABSENSI = 'data_absensi.csv'
 FILE_PIN = 'data_pin.csv'
 
-# Data Default PIN
+# Data Default Kelas 4 SDIT
 DEFAULT_PIN = {
     "4A": "1111", "4B": "1212",
     "4C": "2222", "4D": "2323",
     "Admin": "9999"
 }
 
-# --- FUNGSI LOAD & SAVE GOOGLE SHEETS ---
-def get_data_absensi():
-    # Membuat koneksi ke Google Sheets
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    # Membaca data dari Worksheet bernama 'Absensi'
-    # ttl=0 artinya jangan simpan memori lama (selalu ambil data terbaru real-time)
-    df = conn.read(worksheet="Absensi", ttl=0)
-    return df
+# --- FUNGSI LOAD & SAVE ---
+def load_data_absensi():
+    if not os.path.exists(FILE_ABSENSI):
+        df = pd.DataFrame(columns=['Tanggal', 'Nama Siswa', 'Kelas', 'Status', 'Keterangan'])
+        df.to_csv(FILE_ABSENSI, index=False)
+    return pd.read_csv(FILE_ABSENSI)
 
-def kirim_data_absensi(data_baru):
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    df_lama = get_data_absensi()
-    
-    # Gabungkan data lama dengan data baru
-    df_baru = pd.concat([df_lama, pd.DataFrame([data_baru])], ignore_index=True)
-    
-    # Update ke Google Sheets
-    conn.update(worksheet="Absensi", data=df_baru)
+def simpan_data_absensi(data_baru):
+    df = load_data_absensi()
+    df = pd.concat([df, pd.DataFrame([data_baru])], ignore_index=True)
+    df.to_csv(FILE_ABSENSI, index=False)
 
-# --- FUNGSI PIN (Tetap Lokal CSV agar cepat) ---
 def load_data_pin():
     if not os.path.exists(FILE_PIN):
         df = pd.DataFrame(list(DEFAULT_PIN.items()), columns=['Kelas', 'PIN'])
@@ -43,7 +34,6 @@ def load_data_pin():
     return pd.read_csv(FILE_PIN, dtype={'PIN': str})
 
 def update_pin(kelas, pin_baru):
-    import os # Import os di sini karena dipakai
     df = load_data_pin()
     df.loc[df['Kelas'] == kelas, 'PIN'] = pin_baru
     df.to_csv(FILE_PIN, index=False)
@@ -88,16 +78,15 @@ if menu == "Wali Murid (Absen)":
 
     if st.button("Kirim Absensi"):
         if nama:
-            with st.spinner("Sedang mengirim ke Database Sekolah..."):
-                data_baru = {
-                    'Tanggal': tanggal_sekarang.strftime('%Y-%m-%d'), # Format tanggal string
-                    'Nama Siswa': nama,
-                    'Kelas': kelas,
-                    'Status': status,
-                    'Keterangan': keterangan
-                }
-                kirim_data_absensi(data_baru)
-                st.success(f"✅ Data {nama} BERHASIL DISIMPAN Permanen!")
+            data_baru = {
+                'Tanggal': tanggal_sekarang,
+                'Nama Siswa': nama,
+                'Kelas': kelas,
+                'Status': status,
+                'Keterangan': keterangan
+            }
+            simpan_data_absensi(data_baru)
+            st.success(f"Terima kasih! Data absensi {nama} berhasil dikirim.")
         else:
             st.error("Mohon isi Nama Siswa.")
 
@@ -124,50 +113,37 @@ elif menu == "Guru / Admin (Rekap Data)":
         else:
             tab1, tab2 = st.tabs(["📊 Data Absen", "🔐 Ganti PIN Saya"])
 
-        # --- ISI TAB 1: DATA ABSEN ---
         with tab1:
-            # Ambil data langsung dari Google Sheets
-            try:
-                df = get_data_absensi()
-                # Pastikan kolom Tanggal dibaca sebagai datetime
-                df['Tanggal'] = pd.to_datetime(df['Tanggal']).dt.date
-            except:
-                st.error("Gagal mengambil data. Pastikan Google Sheet sudah disetting.")
-                df = pd.DataFrame()
-
+            df = load_data_absensi()
             filter_tanggal = st.date_input("Pilih Tanggal", datetime.now())
+            df['Tanggal'] = pd.to_datetime(df['Tanggal']).dt.date
+            df_hari_ini = df[df['Tanggal'] == filter_tanggal]
             
-            if not df.empty:
-                df_hari_ini = df[df['Tanggal'] == filter_tanggal]
-                
-                if pilihan_guru == "Admin":
-                    st.info("Mode Admin: Menampilkan Semua Kelas")
-                    df_tampil = df_hari_ini
-                else:
-                    df_tampil = df_hari_ini[df_hari_ini['Kelas'] == pilihan_guru]
-
-                st.write(f"Data Tanggal: **{filter_tanggal}**")
-                st.dataframe(df_tampil, use_container_width=True)
-                
-                if not df_tampil.empty:
-                    st.write("Ringkasan Status:")
-                    st.write(df_tampil['Status'].value_counts())
-                    
-                    st.markdown("---")
-                    csv_data = df_tampil.to_csv(index=False).encode('utf-8')
-                    nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
-                    st.download_button(
-                        label="📥 Download Laporan (Excel/CSV)",
-                        data=csv_data,
-                        file_name=nama_file,
-                        mime='text/csv',
-                    )
-                else:
-                    st.warning("Belum ada data masuk hari ini.")
+            if pilihan_guru == "Admin":
+                st.info("Mode Admin: Menampilkan Semua Kelas")
+                df_tampil = df_hari_ini
             else:
-                st.warning("Database masih kosong.")
+                df_tampil = df_hari_ini[df_hari_ini['Kelas'] == pilihan_guru]
 
-        # --- ISI TAB 2: GANTI PIN ---
+            st.write(f"Data Tanggal: **{filter_tanggal}**")
+            st.dataframe(df_tampil, use_container_width=True)
+            
+            if not df_tampil.empty:
+                st.write("Ringkasan Status:")
+                st.write(df_tampil['Status'].value_counts())
+                
+                st.markdown("---")
+                csv_data = df_tampil.to_csv(index=False).encode('utf-8')
+                nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
+                st.download_button(
+                    label="📥 Download Laporan (Excel/CSV)",
+                    data=csv_data,
+                    file_name=nama_file,
+                    mime='text/csv',
+                )
+            else:
+                st.warning("Data kosong.")
+
         with tab2:
             st.subheader(f"Ubah PIN - {pilihan_guru}")
             col1, col2 = st.columns(2)
