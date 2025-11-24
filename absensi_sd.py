@@ -49,30 +49,25 @@ menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / 
 
 df_pin = load_data_pin()
 daftar_kelas_tersedia = df_pin['Kelas'].unique()
-# --- KODE CSS PEMBERSIH TAMPILAN (VERSI KUAT) ---
+# --- KODE CSS PEMBERSIH TAMPILAN (FINAL) ---
 hide_st_style = """
             <style>
-            /* 1. Hilangkan Menu Kanan Atas (GitHub & Settings) */
-            [data-testid="stToolbar"] {
-                visibility: hidden !important;
-                display: none !important;
-            }
+            /* 1. Hilangkan Menu Utama (Titik Tiga & GitHub di pojok kanan atas) */
+            #MainMenu {visibility: hidden;}
+            [data-testid="stToolbar"] {visibility: hidden !important;}
 
             /* 2. Hilangkan Footer Bawah (Tulisan Created by / Made with Streamlit) */
-            footer {
-                visibility: hidden !important;
-                display: none !important;
-            }
+            footer {visibility: hidden !important;}
             
-            /* 3. Hilangkan Garis Dekorasi Warna-warni di atas */
-            header > .st-emotion-cache-12fmw14 {
-                display: none !important;
-            }
+            /* 3. Hilangkan Garis Dekorasi Warna-warni di atas header */
+            header {visibility: hidden !important;}
 
-            /* 4. Hilangkan tombol Deploy (Jika login sebagai admin) */
-            .stDeployButton {
-                display: none !important;
-            }
+            /* 4. KHUSUS: Hilangkan tombol 'Manage App' (Tombol Merah di screenshotmu) */
+            .stDeployButton {display:none !important;}
+            [data-testid="stManageAppButton"] {display:none !important;}
+            
+            /* 5. Hilangkan indikator running (Ikon kecil di pojok) */
+            [data-testid="stStatusWidget"] {visibility: hidden !important;}
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -175,6 +170,7 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
 
