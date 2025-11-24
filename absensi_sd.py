@@ -56,22 +56,17 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # --- HEADER: LOGO & JUDUL DI TENGAH ---
-# Kita buat 3 kolom: Kiri (kosong), Tengah (Logo), Kanan (kosong)
 col_kiri, col_tengah, col_kanan = st.columns([1, 1, 1])
 
 with col_tengah:
-    # Logo ditaruh di kolom tengah
     if os.path.exists("logo.png"):
-        # use_container_width=True supaya gambar menyesuaikan lebar kolom tengah
         st.image("logo.png", use_container_width=True) 
     else:
         st.write("") 
 
-# Judul dibuat Rata Tengah pakai HTML
 st.markdown("<h1 style='text-align: center;'>Absensi KELAS 4 SDIT AL USWAH 2</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Sistem Absensi Terintegrasi Wali Murid & Guru</p>", unsafe_allow_html=True)
 st.markdown("---")
-# --------------------------------------
 
 menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
 
@@ -93,7 +88,6 @@ if menu == "Wali Murid (Absen)":
     
     status = st.radio("Status Kehadiran", ["Hadir", "Sakit", "Ijin"])
     
-    # Upload Bukti
     file_bukti = None
     nama_file_bukti = ""
     
@@ -161,23 +155,31 @@ elif menu == "Guru / Admin (Rekap Data)":
 
             st.write(f"Data Tanggal: **{filter_tanggal}**")
             
-            # Tampilkan Tabel (Tanpa kolom nama file)
             st.dataframe(df_tampil.drop(columns=['Bukti File'], errors='ignore'), use_container_width=True)
             
             if not df_tampil.empty:
-                # Galeri Bukti
+                # --- PERBAIKAN DI SINI (Penanganan Error NaN) ---
                 siswa_sakit = df_tampil[df_tampil['Status'] == "Sakit"]
+                
                 if not siswa_sakit.empty:
                     st.markdown("### 📸 Galeri Bukti Sakit")
                     cols = st.columns(3)
+                    
                     for index, row in siswa_sakit.iterrows():
-                        nama_file = row.get('Bukti File', '')
-                        if nama_file:
+                        # Ambil nama file dan paksa jadi string (str) supaya tidak error NaN
+                        nama_file = str(row.get('Bukti File', ''))
+                        
+                        # Cek apakah nama file valid (bukan 'nan' atau kosong)
+                        if nama_file and nama_file.lower() != 'nan':
                             path_file = os.path.join(FOLDER_BUKTI, nama_file)
+                            
+                            # Cek apakah gambarnya benar-benar ada di server
                             if os.path.exists(path_file):
                                 st.image(path_file, caption=f"{row['Nama Siswa']} ({row['Kelas']})", width=200)
+                            else:
+                                st.write(f"⚠️ Foto {row['Nama Siswa']} tidak ditemukan di server.")
+                # ------------------------------------------------
                 
-                # Download
                 st.markdown("---")
                 csv_data = df_tampil.to_csv(index=False).encode('utf-8')
                 nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
