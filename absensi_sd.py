@@ -2,44 +2,64 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --- 1. PENGATURAN DATA ---
-# Kita gunakan st-gsheets untuk absensi
-# Folder foto tetap lokal (temporary)
-FOLDER_BUKTI = 'bukti_sakit'
 FILE_PIN = 'data_pin.csv'
+FOLDER_BUKTI = 'bukti_sakit'
 
+# Buat folder bukti jika belum ada
 if not os.path.exists(FOLDER_BUKTI):
     os.makedirs(FOLDER_BUKTI)
 
-# Data Default PIN (Lokal CSV)
+# Data Default PIN
 DEFAULT_PIN = {
     "4A": "1111", "4B": "1212",
     "4C": "2222", "4D": "2323",
     "Admin": "9999"
 }
 
-# --- FUNGSI GOOGLE SHEETS (INIT) ---
+# --- FUNGSI KONEKSI GOOGLE SHEET (GSPREAD) ---
+def connect_google_sheet():
+    # Mengambil kunci rahasia dari Streamlit Secrets
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    
+    # Membersihkan private_key dari karakter enter (\n) yang kadang bikin error
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    
+    # Buka Sheet bernama "Database Absensi SDIT" dan Worksheet "Absensi"
+    # Pastikan nama File dan Sheet di Google kamu sesuai!
+    sheet = client.open("Database Absensi SDIT").worksheet("Absensi")
+    return sheet
+
 def get_data_absensi():
-    # Membuat koneksi
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    # Membaca data, ttl=0 agar selalu refresh real-time
     try:
-        df = conn.read(worksheet="Absensi", ttl=0)
+        sheet = connect_google_sheet()
+        # Ambil semua data
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
         return df
-    except:
-        return pd.DataFrame()
+    except Exception as e:
+        return pd.DataFrame() # Kembalikan tabel kosong jika error/koneksi putus
 
 def kirim_data_absensi(data_baru):
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    df_lama = get_data_absensi()
-    
-    # Gabungkan data
-    df_baru = pd.concat([df_lama, pd.DataFrame([data_baru])], ignore_index=True)
-    
-    # Update ke Sheet
-    conn.update(worksheet="Absensi", data=df_baru)
+    sheet = connect_google_sheet()
+    # Urutan data harus sesuai kolom di Google Sheet: 
+    # [Tanggal, Nama Siswa, Kelas, Status, Keterangan, Bukti File]
+    row = [
+        str(data_baru['Tanggal']),
+        data_baru['Nama Siswa'],
+        data_baru['Kelas'],
+        data_baru['Status'],
+        data_baru['Keterangan'],
+        data_baru['Bukti File']
+    ]
+    sheet.append_row(row)
 
 # --- FUNGSI PIN (Lokal) ---
 def load_data_pin():
@@ -107,28 +127,28 @@ if menu == "Wali Murid (Absen)":
 
     if st.button("Kirim Absensi"):
         if nama:
-            # Simpan Foto (Lokal Sementara)
+            # 1. Simpan Foto (Lokal Sementara)
             if file_bukti is not None:
                 nama_file_bukti = f"{tanggal_sekarang}_{nama}_{kelas}.png".replace(" ", "_")
                 path_simpan = os.path.join(FOLDER_BUKTI, nama_file_bukti)
                 with open(path_simpan, "wb") as f:
                     f.write(file_bukti.getbuffer())
             
-            # Simpan Data (Google Sheets)
-            with st.spinner("Sedang menyimpan ke Database Sekolah..."):
-                data_baru = {
-                    'Tanggal': tanggal_sekarang.strftime('%Y-%m-%d'),
-                    'Nama Siswa': nama,
-                    'Kelas': kelas,
-                    'Status': status,
-                    'Keterangan': keterangan,
-                    'Bukti File': nama_file_bukti
-                }
-                try:
+            # 2. Simpan Data ke Google Sheets
+            try:
+                with st.spinner("Menghubungkan ke Google Sheets..."):
+                    data_baru = {
+                        'Tanggal': tanggal_sekarang.strftime('%Y-%m-%d'),
+                        'Nama Siswa': nama,
+                        'Kelas': kelas,
+                        'Status': status,
+                        'Keterangan': keterangan,
+                        'Bukti File': nama_file_bukti
+                    }
                     kirim_data_absensi(data_baru)
-                    st.success(f"✅ Data {nama} BERHASIL DISIMPAN Permanen!")
-                except Exception as e:
-                    st.error(f"Gagal koneksi ke Google Sheet: {e}")
+                    st.success(f"✅ Data {nama} BERHASIL DISIMPAN PERMANEN ke Google Sheet!")
+            except Exception as e:
+                st.error(f"Gagal koneksi: {e}. Pastikan Google Sheet sudah dishare ke email Robot.")
         else:
             st.error("Mohon isi Nama Siswa.")
 
@@ -159,12 +179,11 @@ elif menu == "Guru / Admin (Rekap Data)":
             # Ambil Data dari Google Sheets
             try:
                 df = get_data_absensi()
-                # Bersihkan data kosong
-                df = df.dropna(how='all') 
-                # Format Tanggal
-                df['Tanggal'] = pd.to_datetime(df['Tanggal']).dt.date
+                if not df.empty:
+                    # Pastikan format tanggal benar
+                    df['Tanggal'] = pd.to_datetime(df['Tanggal']).dt.date
             except Exception as e:
-                st.error("Belum ada data di Google Sheet atau koneksi putus.")
+                st.error(f"Error mengambil data: {e}")
                 df = pd.DataFrame()
 
             filter_tanggal = st.date_input("Pilih Tanggal", datetime.now())
@@ -183,19 +202,20 @@ elif menu == "Guru / Admin (Rekap Data)":
                 # Tampil Tabel
                 st.dataframe(df_tampil.drop(columns=['Bukti File'], errors='ignore'), use_container_width=True)
                 
-                # Galeri Foto
-                siswa_sakit = df_tampil[df_tampil['Status'] == "Sakit"]
-                if not siswa_sakit.empty:
-                    st.markdown("### 📸 Galeri Bukti Sakit (Sementara)")
-                    cols = st.columns(3)
-                    for index, row in siswa_sakit.iterrows():
-                        nama_file = str(row.get('Bukti File', ''))
-                        if nama_file and nama_file.lower() != 'nan':
-                            path_file = os.path.join(FOLDER_BUKTI, nama_file)
-                            if os.path.exists(path_file):
-                                st.image(path_file, caption=f"{row['Nama Siswa']}", width=200)
-                            else:
-                                st.caption(f"Foto {row['Nama Siswa']} expired/reset.")
+                # Galeri Foto (Anti Error)
+                if not df_tampil.empty:
+                    siswa_sakit = df_tampil[df_tampil['Status'] == "Sakit"]
+                    if not siswa_sakit.empty:
+                        st.markdown("### 📸 Galeri Bukti Sakit (Sementara)")
+                        cols = st.columns(3)
+                        for index, row in siswa_sakit.iterrows():
+                            nama_file = str(row.get('Bukti File', ''))
+                            if nama_file and nama_file.lower() != 'nan' and nama_file != "":
+                                path_file = os.path.join(FOLDER_BUKTI, nama_file)
+                                if os.path.exists(path_file):
+                                    st.image(path_file, caption=f"{row['Nama Siswa']}", width=200)
+                                else:
+                                    st.caption(f"Foto {row['Nama Siswa']} tidak ditemukan (mungkin server reset).")
 
                 # Download Button
                 if not df_tampil.empty:
@@ -204,7 +224,7 @@ elif menu == "Guru / Admin (Rekap Data)":
                     nama_file = f"Absensi_{filter_tanggal}.csv"
                     st.download_button("📥 Download Excel/CSV", csv_data, nama_file, "text/csv")
             else:
-                st.warning("Data kosong.")
+                st.warning("Database Google Sheet masih kosong.")
 
         with tab2:
             st.subheader(f"Ubah PIN - {pilihan_guru}")
