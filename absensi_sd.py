@@ -49,7 +49,14 @@ menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / 
 
 df_pin = load_data_pin()
 daftar_kelas_tersedia = df_pin['Kelas'].unique()
-
+# --- SEMBUNYIKAN MENU & FOOTER BAWAAN ---
+hide_st_style = """
+            <style>
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 # --- MENU WALI MURID ---
 if menu == "Wali Murid (Absen)":
     st.header("📝 Form Absensi Siswa")
@@ -149,3 +156,4 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
