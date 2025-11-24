@@ -7,11 +7,13 @@ from datetime import datetime
 FILE_ABSENSI = 'data_absensi.csv'
 FILE_PIN = 'data_pin.csv'
 
-# Data Default (Perhatikan: Kepala Sekolah sudah diganti Admin)
+# Data Default (Sesuai Permintaan: Kelas 4 & Admin)
 DEFAULT_PIN = {
-    "4A": "1111", "4B": "1212",
-    "4C": "2222", "4D": "2323",
-    "Admin": "9999"  # <-- Nama baru
+    "4A": "1111", 
+    "4B": "1212",
+    "4C": "2222", 
+    "4D": "2323",
+    "Admin": "9999"
 }
 
 # --- FUNGSI LOAD & SAVE ---
@@ -28,7 +30,7 @@ def simpan_data_absensi(data_baru):
 
 def load_data_pin():
     if not os.path.exists(FILE_PIN):
-        # Jika file belum ada, buat baru dengan data DEFAULT_PIN (ada Admin-nya)
+        # Jika file belum ada, buat baru dengan data DEFAULT_PIN
         df = pd.DataFrame(list(DEFAULT_PIN.items()), columns=['Kelas', 'PIN'])
         df['PIN'] = df['PIN'].astype(str)
         df.to_csv(FILE_PIN, index=False)
@@ -42,15 +44,7 @@ def update_pin(kelas, pin_baru):
 # --- 2. TAMPILAN APLIKASI ---
 st.set_page_config(page_title="Absensi KELAS 4 SDIT AL USWAH 2", layout="centered")
 
-st.title("🏫 Aplikasi Absensi KELAS 4 SDIT AL USWAH 2")
-st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
-
-menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
-
-df_pin = load_data_pin()
-daftar_kelas_tersedia = df_pin['Kelas'].unique()
-# --- KODE CSS PEMBERSIH TAMPILAN (FINAL) ---
-# --- KODE CSS PEMBERSIH TAMPILAN (VERSI FINAL & TERUJI) ---
+# --- KODE CSS PEMBERSIH TAMPILAN (VERSI FINAL) ---
 hide_st_style = """
             <style>
             /* 1. Hilangkan Menu Kanan Atas (Titik Tiga & GitHub) */
@@ -77,6 +71,15 @@ hide_st_style = """
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
+
+st.title("🏫 Absensi KELAS 4 SDIT AL USWAH 2")
+st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
+
+menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
+
+df_pin = load_data_pin()
+daftar_kelas_tersedia = df_pin['Kelas'].unique()
+
 # --- MENU WALI MURID ---
 if menu == "Wali Murid (Absen)":
     st.header("📝 Form Absensi Siswa")
@@ -110,7 +113,7 @@ if menu == "Wali Murid (Absen)":
 
 # --- MENU GURU / ADMIN ---
 elif menu == "Guru / Admin (Rekap Data)":
-    st.header("📊 Dashboard Guru")
+    st.header("📊 Dashboard Guru & Admin")
     
     st.sidebar.markdown("---")
     st.sidebar.write("🔒 **Login Sistem**")
@@ -124,19 +127,13 @@ elif menu == "Guru / Admin (Rekap Data)":
     if password_input == pin_benar:
         st.success(f"Selamat Datang, {pilihan_guru}")
         
-        # --- LOGIKA SPESIAL ADMIN ---
+        # Pengaturan Tab
         if pilihan_guru == "Admin":
-            # Admin punya 3 Tab
             tab1, tab2, tab3 = st.tabs(["📊 Data Absen", "🔐 Ganti PIN Saya", "🔑 Cek Password Guru"])
-            
-            # TAB KHUSUS ADMIN: LIHAT SEMUA PIN
             with tab3:
                 st.subheader("Rahasia: Daftar PIN Guru")
-                st.warning("Halaman ini hanya untuk Admin. Gunakan jika ada guru lupa PIN.")
-                df_semua_pin = load_data_pin()
-                st.dataframe(df_semua_pin, use_container_width=True)
+                st.dataframe(load_data_pin(), use_container_width=True)
         else:
-            # Guru Biasa punya 2 Tab
             tab1, tab2 = st.tabs(["📊 Data Absen", "🔐 Ganti PIN Saya"])
 
         # --- ISI TAB 1: DATA ABSEN ---
@@ -152,9 +149,24 @@ elif menu == "Guru / Admin (Rekap Data)":
             else:
                 df_tampil = df_hari_ini[df_hari_ini['Kelas'] == pilihan_guru]
 
+            st.write(f"Data Tanggal: **{filter_tanggal}**")
             st.dataframe(df_tampil, use_container_width=True)
+            
             if not df_tampil.empty:
+                st.write("Ringkasan Status:")
                 st.write(df_tampil['Status'].value_counts())
+                
+                # --- TOMBOL DOWNLOAD (Dimasukkan Kembali) ---
+                st.markdown("---")
+                csv_data = df_tampil.to_csv(index=False).encode('utf-8')
+                nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
+                st.download_button(
+                    label="📥 Download Laporan (Excel/CSV)",
+                    data=csv_data,
+                    file_name=nama_file,
+                    mime='text/csv',
+                )
+                # --------------------------------------------
             else:
                 st.warning("Data kosong.")
 
@@ -176,10 +188,3 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
-
-
-
-
-
-
-
