@@ -2,10 +2,16 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+from PIL import Image
 
 # --- 1. PENGATURAN DATA ---
 FILE_ABSENSI = 'data_absensi.csv'
 FILE_PIN = 'data_pin.csv'
+FOLDER_BUKTI = 'bukti_sakit' # Folder khusus simpan foto
+
+# Pastikan folder bukti ada
+if not os.path.exists(FOLDER_BUKTI):
+    os.makedirs(FOLDER_BUKTI)
 
 # Data Default Kelas 4 SDIT
 DEFAULT_PIN = {
@@ -17,7 +23,8 @@ DEFAULT_PIN = {
 # --- FUNGSI LOAD & SAVE ---
 def load_data_absensi():
     if not os.path.exists(FILE_ABSENSI):
-        df = pd.DataFrame(columns=['Tanggal', 'Nama Siswa', 'Kelas', 'Status', 'Keterangan'])
+        # Tambah kolom 'Bukti File'
+        df = pd.DataFrame(columns=['Tanggal', 'Nama Siswa', 'Kelas', 'Status', 'Keterangan', 'Bukti File'])
         df.to_csv(FILE_ABSENSI, index=False)
     return pd.read_csv(FILE_ABSENSI)
 
@@ -39,33 +46,30 @@ def update_pin(kelas, pin_baru):
     df.to_csv(FILE_PIN, index=False)
 
 # --- 2. TAMPILAN APLIKASI ---
-# initial_sidebar_state="expanded" memaksa menu samping terbuka saat pertama kali buka
 st.set_page_config(page_title="Absensi KELAS 4 SDIT AL USWAH 2", layout="centered", initial_sidebar_state="expanded")
 
-# --- CSS PEMBERSIH TAMPILAN (VERSI AMAN) ---
-# Kita melonggarkan aturan supaya tombol sidebar TIDAK IKUT HILANG
+# CSS Pembersih Tampilan (Aman)
 hide_st_style = """
             <style>
-            /* 1. Hilangkan Menu Kanan Atas (Titik Tiga & GitHub) */
-            [data-testid="stToolbar"] {
-                visibility: hidden !important;
-                right: 2rem;
-            }
-
-            /* 2. Hilangkan Footer Bawah (Tulisan Made with Streamlit) */
-            footer {
-                visibility: hidden !important;
-                display: none !important;
-            }
-            
-            /* Kita HAPUS aturan yang menyembunyikan Header/Decoration */
-            /* Supaya tombol panah (Hamburger Menu) di kiri atas tetap muncul */
+            [data-testid="stToolbar"] {visibility: hidden !important; right: 2rem;}
+            footer {visibility: hidden !important; display: none !important;}
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-st.title("🏫 Absensi KELAS 4 SDIT AL USWAH 2")
-st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
+# --- FITUR 1: TAMPILKAN LOGO SEKOLAH ---
+col_logo, col_judul = st.columns([1, 4])
+with col_logo:
+    # Cek apakah file logo.png sudah diupload ke GitHub/Folder
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=100)
+    else:
+        st.write("📷") # Placeholder jika logo belum ada
+with col_judul:
+    st.title("Absensi SDIT AL USWAH 2")
+    st.write("Kelas 4 - Sistem Terintegrasi")
+
+st.markdown("---")
 
 menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
 
@@ -86,16 +90,35 @@ if menu == "Wali Murid (Absen)":
     kelas = st.selectbox("Kelas", pilihan_kelas_wm)
     
     status = st.radio("Status Kehadiran", ["Hadir", "Sakit", "Ijin"])
+    
+    # --- FITUR 2: UPLOAD FOTO JIKA SAKIT ---
+    file_bukti = None
+    nama_file_bukti = ""
+    
+    if status == "Sakit":
+        st.warning("📸 Mohon upload foto surat dokter atau kondisi siswa.")
+        file_bukti = st.file_uploader("Upload Bukti (Gambar)", type=['png', 'jpg', 'jpeg'])
+    
     keterangan = st.text_area("Keterangan Tambahan (Opsional)")
 
     if st.button("Kirim Absensi"):
         if nama:
+            # Proses Simpan Gambar
+            if file_bukti is not None:
+                # Buat nama file unik: Tanggal_Nama_Kelas.png
+                nama_file_bukti = f"{tanggal_sekarang}_{nama}_{kelas}.png".replace(" ", "_")
+                path_simpan = os.path.join(FOLDER_BUKTI, nama_file_bukti)
+                
+                with open(path_simpan, "wb") as f:
+                    f.write(file_bukti.getbuffer())
+            
             data_baru = {
                 'Tanggal': tanggal_sekarang,
                 'Nama Siswa': nama,
                 'Kelas': kelas,
                 'Status': status,
-                'Keterangan': keterangan
+                'Keterangan': keterangan,
+                'Bukti File': nama_file_bukti # Simpan nama filenya saja di CSV
             }
             simpan_data_absensi(data_baru)
             st.success(f"Terima kasih! Data absensi {nama} berhasil dikirim.")
@@ -138,12 +161,28 @@ elif menu == "Guru / Admin (Rekap Data)":
                 df_tampil = df_hari_ini[df_hari_ini['Kelas'] == pilihan_guru]
 
             st.write(f"Data Tanggal: **{filter_tanggal}**")
-            st.dataframe(df_tampil, use_container_width=True)
             
+            # Tampilkan Tabel (Sembunyikan kolom nama file bukti agar rapi)
+            st.dataframe(df_tampil.drop(columns=['Bukti File'], errors='ignore'), use_container_width=True)
+            
+            # --- BAGIAN LIHAT BUKTI FOTO ---
             if not df_tampil.empty:
-                st.write("Ringkasan Status:")
-                st.write(df_tampil['Status'].value_counts())
+                # Cek apakah ada yang sakit dan punya bukti
+                siswa_sakit = df_tampil[df_tampil['Status'] == "Sakit"]
                 
+                if not siswa_sakit.empty:
+                    st.markdown("### 📸 Galeri Bukti Sakit")
+                    cols = st.columns(3) # Tampilkan 3 gambar per baris
+                    for index, row in siswa_sakit.iterrows():
+                        nama_file = row.get('Bukti File', '')
+                        if nama_file:
+                            path_file = os.path.join(FOLDER_BUKTI, nama_file)
+                            if os.path.exists(path_file):
+                                st.image(path_file, caption=f"Bukti: {row['Nama Siswa']} ({row['Kelas']})", width=200)
+                            else:
+                                st.warning(f"Foto {row['Nama Siswa']} hilang/belum upload.")
+                
+                # Tombol Download
                 st.markdown("---")
                 csv_data = df_tampil.to_csv(index=False).encode('utf-8')
                 nama_file = f"Absensi_SDIT_{filter_tanggal}.csv"
