@@ -44,9 +44,6 @@ st.set_page_config(page_title="Absensi KELAS 4 SDIT AL USWAH 2", layout="centere
 # --- SEMBUNYIKAN MENU & FOOTER BAWAAN ---
 hide_st_style = """
             <style>
-            /* Menyembunyikan Menu Burger (Garis Tiga di pojok kanan atas) */
-            #MainMenu {visibility: hidden;}
-            
             /* Menyembunyikan Footer (Tulisan Made with Streamlit / Created by) */
             footer {visibility: hidden;}
             
@@ -165,5 +162,6 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
