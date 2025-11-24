@@ -49,20 +49,30 @@ menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / 
 
 df_pin = load_data_pin()
 daftar_kelas_tersedia = df_pin['Kelas'].unique()
-# --- KODE CSS PEMBERSIH TAMPILAN ---
+# --- KODE CSS PEMBERSIH TAMPILAN (VERSI KUAT) ---
 hide_st_style = """
             <style>
-            /* 1. Menghilangkan Menu Utama (Titik Tiga & GitHub di pojok kanan atas) */
-            [data-testid="stToolbar"] {visibility: hidden !important;}
+            /* 1. Hilangkan Menu Kanan Atas (GitHub & Settings) */
+            [data-testid="stToolbar"] {
+                visibility: hidden !important;
+                display: none !important;
+            }
 
-            /* 2. Menghilangkan Footer (Tulisan Made with Streamlit) */
-            footer {visibility: hidden !important;}
-
-            /* 3. Menghilangkan Garis Warna-warni di atas header */
-            header > .st-emotion-cache-12fmw14 {display: none;}
+            /* 2. Hilangkan Footer Bawah (Tulisan Created by / Made with Streamlit) */
+            footer {
+                visibility: hidden !important;
+                display: none !important;
+            }
             
-            /* 4. Memastikan tombol Sidebar (Panah kiri atas) TETAP TERLIHAT */
-            /* Kita tidak menyembunyikan seluruh header, cuma elemen dalamnya saja */
+            /* 3. Hilangkan Garis Dekorasi Warna-warni di atas */
+            header > .st-emotion-cache-12fmw14 {
+                display: none !important;
+            }
+
+            /* 4. Hilangkan tombol Deploy (Jika login sebagai admin) */
+            .stDeployButton {
+                display: none !important;
+            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -165,6 +175,7 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
 
