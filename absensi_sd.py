@@ -41,20 +41,7 @@ def update_pin(kelas, pin_baru):
 
 # --- 2. TAMPILAN APLIKASI ---
 st.set_page_config(page_title="Absensi KELAS 4 SDIT AL USWAH 2", layout="centered")
-# --- SEMBUNYIKAN MENU & FOOTER BAWAAN ---
-hide_st_style = """
-            <style>
-            /* Menyembunyikan Footer (Tulisan Made with Streamlit / Created by) */
-            footer {visibility: hidden;}
-            
-            /* Menyembunyikan Header (Garis warna-warni di atas) */
-            header {visibility: hidden;}
-            
-            /* Menyembunyikan tombol 'Deploy' jika muncul */
-            .stDeployButton {display:none;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+
 st.title("🏫 Aplikasi Absensi KELAS 4 SDIT AL USWAH 2")
 st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
 
@@ -162,6 +149,3 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
-
-
-
