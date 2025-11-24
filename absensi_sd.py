@@ -40,8 +40,8 @@ def update_pin(kelas, pin_baru):
     df.to_csv(FILE_PIN, index=False)
 
 # --- 2. TAMPILAN APLIKASI ---
-st.set_page_config(page_title="Absensi Kelas 4 SDIT AL USWAH 2", layout="centered")
-
+st.set_page_config(page_title="Absensi Kelas 4", layout="centered")
+st.set_page_config(page_title="SDIT AL USWAH 2", layout="centered")
 st.title("🏫 Absensi Kelas 4 SDIT AL USWAH 2")
 st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
 
@@ -149,5 +149,6 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
