@@ -110,7 +110,7 @@ if menu == "Wali Murid (Absen)":
 
 # --- MENU GURU / ADMIN ---
 elif menu == "Guru / Admin (Rekap Data)":
-    st.header("📊 Dashboard Guru & Admin")
+    st.header("📊 Dashboard Guru")
     
     st.sidebar.markdown("---")
     st.sidebar.write("🔒 **Login Sistem**")
@@ -176,6 +176,7 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
 
