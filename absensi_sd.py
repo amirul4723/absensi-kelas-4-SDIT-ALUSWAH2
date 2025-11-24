@@ -49,19 +49,20 @@ menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / 
 
 df_pin = load_data_pin()
 daftar_kelas_tersedia = df_pin['Kelas'].unique()
-# --- KODE CSS UNTUK MENYEMBUNYIKAN MENU & FOOTER (PERBAIKAN) ---
+# --- KODE CSS PEMBERSIH TAMPILAN ---
 hide_st_style = """
             <style>
-            /* Menyembunyikan Menu Titik Tiga di pojok kanan atas */
-            #MainMenu {visibility: hidden;}
+            /* 1. Menghilangkan Menu Utama (Titik Tiga & GitHub di pojok kanan atas) */
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+
+            /* 2. Menghilangkan Footer (Tulisan Made with Streamlit) */
+            footer {visibility: hidden !important;}
+
+            /* 3. Menghilangkan Garis Warna-warni di atas header */
+            header > .st-emotion-cache-12fmw14 {display: none;}
             
-            /* Menyembunyikan Footer (Tulisan Made with Streamlit) */
-            footer {visibility: hidden;}
-            
-            /* Sembunyikan tombol Deploy */
-            .stDeployButton {display:none;}
-            
-            /* PENTING: Jangan sembunyikan 'header' supaya tombol sidebar tetap ada */
+            /* 4. Memastikan tombol Sidebar (Panah kiri atas) TETAP TERLIHAT */
+            /* Kita tidak menyembunyikan seluruh header, cuma elemen dalamnya saja */
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -164,5 +165,6 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
