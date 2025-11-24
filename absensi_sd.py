@@ -50,24 +50,30 @@ menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / 
 df_pin = load_data_pin()
 daftar_kelas_tersedia = df_pin['Kelas'].unique()
 # --- KODE CSS PEMBERSIH TAMPILAN (FINAL) ---
+# --- KODE CSS PEMBERSIH TAMPILAN (VERSI FINAL & TERUJI) ---
 hide_st_style = """
             <style>
-            /* 1. Hilangkan Menu Utama (Titik Tiga & GitHub di pojok kanan atas) */
-            #MainMenu {visibility: hidden;}
-            [data-testid="stToolbar"] {visibility: hidden !important;}
+            /* 1. Hilangkan Menu Kanan Atas (Titik Tiga & GitHub) */
+            [data-testid="stToolbar"] {
+                visibility: hidden !important;
+                right: 2rem;
+            }
 
-            /* 2. Hilangkan Footer Bawah (Tulisan Created by / Made with Streamlit) */
-            footer {visibility: hidden !important;}
+            /* 2. Hilangkan Footer Bawah (Tulisan Made with Streamlit) */
+            footer {
+                visibility: hidden !important;
+                display: none !important;
+            }
             
-            /* 3. Hilangkan Garis Dekorasi Warna-warni di atas header */
-            header {visibility: hidden !important;}
+            /* 3. Hilangkan Garis Warna-warni di atas header */
+            [data-testid="stDecoration"] {
+                display: none;
+            }
 
-            /* 4. KHUSUS: Hilangkan tombol 'Manage App' (Tombol Merah di screenshotmu) */
-            .stDeployButton {display:none !important;}
-            [data-testid="stManageAppButton"] {display:none !important;}
-            
-            /* 5. Hilangkan indikator running (Ikon kecil di pojok) */
-            [data-testid="stStatusWidget"] {visibility: hidden !important;}
+            /* 4. Hilangkan indikator 'Running' di pojok kanan atas */
+            [data-testid="stStatusWidget"] {
+                visibility: hidden;
+            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -170,6 +176,7 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
 
 
