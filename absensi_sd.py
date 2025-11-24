@@ -42,7 +42,7 @@ def update_pin(kelas, pin_baru):
 # --- 2. TAMPILAN APLIKASI ---
 st.set_page_config(page_title="Absensi Kelas 4 SDIT AL USWAH 2", layout="centered")
 
-st.title("🏫 Aplikasi Absensi Kelas 4 SDIT AL USWAH 2")
+st.title("🏫 Absensi Kelas 4 SDIT AL USWAH 2")
 st.write("Sistem Absensi Terintegrasi Wali Murid & Guru")
 
 menu = st.sidebar.selectbox("Pilih Peran Anda:", ["Wali Murid (Absen)", "Guru / Admin (Rekap Data)"])
@@ -149,4 +149,5 @@ elif menu == "Guru / Admin (Rekap Data)":
             
     elif password_input:
         st.error("PIN Salah!")
+
 
