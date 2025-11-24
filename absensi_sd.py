@@ -146,7 +146,7 @@ if menu == "Wali Murid (Absen)":
                         'Bukti File': nama_file_bukti
                     }
                     kirim_data_absensi(data_baru)
-                    st.success(f"✅ Data {nama} BERHASIL DISIMPAN PERMANEN ke Google Sheet!")
+                    st.success(f"✅ Data {nama} BERHASIL DISIMPAN")
             except Exception as e:
                 st.error(f"Gagal koneksi: {e}. Pastikan Google Sheet sudah dishare ke email Robot.")
         else:
@@ -242,3 +242,4 @@ elif menu == "Guru / Admin (Rekap Data)":
 
     elif password_input:
         st.error("PIN Salah!")
+
